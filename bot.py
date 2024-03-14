@@ -1,10 +1,12 @@
+import os
+
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from openai import OpenAI
 
 from utils import dp, bot, expected_locations, get_points_option, handle_points, handle_points_with_comment, Form, handle_check_photo, \
-    handle_photo, photos, get_format_data
+    handle_photo, photos, get_format_data, client
 
 
 @dp.message(CommandStart())
@@ -334,14 +336,20 @@ async def handle_report_from_openai(message: Message, state: FSMContext):
     if message.text == "Generate":
         text_to_send = await get_format_data(message, state)
 
-        client = OpenAI()
-        response = client.completions.create(
-            model="gpt-3.5-turbo-instruct",
-            prompt=text_to_send,
-            max_tokens=3
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": 'Check location and points from 1 to 5,'
+                               ' then generate the answer from results of this point if they was.'
+                               'Try to answer just on question from points and remember about user location country'
+                },
+                {"role": "user", "content": text_to_send}
+            ]
         )
 
-        generated_text = response.choices[0].text
+        generated_text = response.choices[0].message
         await message.answer(f"OpenAI Response: {generated_text}", reply_markup=ReplyKeyboardRemove())
     elif message.text == "I want to re-fill":
         await message.answer(

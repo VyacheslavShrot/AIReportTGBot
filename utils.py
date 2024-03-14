@@ -1,7 +1,7 @@
 import logging
 import os
 
-# import openai
+import openai
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -32,11 +32,11 @@ dp = Dispatcher(storage=_storage)
 """
                         FOR OPENAI
 """
-# _OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-# if _OPENAI_API_KEY is None:
-#     raise ValueError("OPENAI_API_KEY not found in the .env file. Make sure you add it")
-#
-# openai.api_key = _OPENAI_API_KEY
+_OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+if _OPENAI_API_KEY is None:
+    raise ValueError("OPENAI_API_KEY not found in the .env file. Make sure you add it")
+
+client = openai.OpenAI(api_key=_OPENAI_API_KEY)
 
 """
                         ELSE
