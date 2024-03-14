@@ -1,26 +1,23 @@
-import os
-
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from openai import OpenAI
 
 from utils import dp, bot, expected_locations, get_points_option, handle_points, handle_points_with_comment, Form, handle_check_photo, \
     handle_photo, photos, get_format_data, client
 
+_locations = []
+for location in expected_locations:
+    keyboard_buttons = KeyboardButton(text=f"{location}")
+    _locations.append(keyboard_buttons)
+
 
 @dp.message(CommandStart())
 async def send_welcome(message: Message, state: FSMContext):
-    locations = []
-    for location in expected_locations:
-        keyboard_buttons = KeyboardButton(text=f"{location}")
-        locations.append(keyboard_buttons)
-
     await message.answer("Hello! Let's get started")
     await message.answer(
         "Now you can choose one of 5 locations to create report by using OpenAI",
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[locations],
+            keyboard=[_locations],
             resize_keyboard=True
         )
     )
@@ -327,6 +324,28 @@ async def handle_report(message: Message, state: FSMContext):
     await state.set_state(Form.OpenAI)
 
 
+# @dp.message(Form.generate_sound)
+# async def handle_generating_sound_from_text(message: Message, state: FSMContext):
+#     if message.text not in ['Generate', 'No']:
+#         await message.answer("Please choose an answer from the given options")
+#         return
+#
+#     await message.answer(
+#         f"Now we can generate a response from AI, shall we begin?",
+#         reply_markup=ReplyKeyboardMarkup(
+#             keyboard=[
+#                 [
+#                     KeyboardButton(text="Generate"),
+#                     KeyboardButton(text="I want to re-fill")
+#                 ]
+#             ],
+#             resize_keyboard=True
+#         )
+#     )
+#
+#     await state.set_state(Form.OpenAI)
+
+
 @dp.message(Form.OpenAI)
 async def handle_report_from_openai(message: Message, state: FSMContext):
     if message.text not in ["Generate", "I want to re-fill"]:
@@ -349,8 +368,17 @@ async def handle_report_from_openai(message: Message, state: FSMContext):
             ]
         )
 
-        generated_text = response.choices[0].message
+        generated_text = response.choices[0].message.content
         await message.answer(f"OpenAI Response: {generated_text}", reply_markup=ReplyKeyboardRemove())
+
+        await message.answer(
+            "Now you can choose again one of 5 locations to create report by using OpenAI",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=[_locations],
+                resize_keyboard=True
+            )
+        )
+        await state.set_state(Form.location)
     elif message.text == "I want to re-fill":
         await message.answer(
             f"Moving on to the point 1:",

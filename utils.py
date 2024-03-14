@@ -88,6 +88,8 @@ class Form(StatesGroup):
 
     report: str = State()
 
+    # generate_sound: str = State()
+
     OpenAI: str = State()
 
 
