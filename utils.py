@@ -236,12 +236,7 @@ async def handle_photo(message, state, next_point_num, next_point, current_state
 
 
 async def get_format_data(message, state) -> (str, list):
-    points = ["first_point", "second_point", "third_point", "fourth_point", "fifth_point"]
-
     data: dict = await state.get_data()
-    for point in points:
-        if data.get(point) and data.get(point + "_with_comment"):
-            data.pop(point)
 
     photos_from_points = []
     for photo in photos:

@@ -326,28 +326,6 @@ async def handle_report(message: Message, state: FSMContext):
     await state.set_state(Form.OpenAI)
 
 
-# @dp.message(Form.generate_sound)
-# async def handle_generating_sound_from_text(message: Message, state: FSMContext):
-#     if message.text not in ['Generate', 'No']:
-#         await message.answer("Please choose an answer from the given options")
-#         return
-#
-#     await message.answer(
-#         f"Now we can generate a response from AI, shall we begin?",
-#         reply_markup=ReplyKeyboardMarkup(
-#             keyboard=[
-#                 [
-#                     KeyboardButton(text="Generate"),
-#                     KeyboardButton(text="I want to re-fill")
-#                 ]
-#             ],
-#             resize_keyboard=True
-#         )
-#     )
-#
-#     await state.set_state(Form.OpenAI)
-
-
 @dp.message(Form.OpenAI)
 async def handle_report_from_openai(message: Message, state: FSMContext):
     if message.text not in ["Generate", "I want to re-fill"]:
@@ -431,8 +409,12 @@ async def handle_report_from_openai(message: Message, state: FSMContext):
                 resize_keyboard=True
             )
         )
+
+        await state.clear()
         await state.set_state(Form.location)
     elif message.text == "I want to re-fill":
+        await state.clear()
+
         await message.answer(
             f"Moving on to the point 1:",
             reply_markup=ReplyKeyboardMarkup(
