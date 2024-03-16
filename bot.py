@@ -3,7 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from utils import dp, bot, expected_locations, get_points_option, handle_points, handle_points_with_comment, Form, handle_check_photo, \
-    handle_photo, photos, get_format_data, client
+    handle_photo, get_format_data, client
 
 _locations = []
 for location in expected_locations:
@@ -353,26 +353,63 @@ async def handle_report_from_openai(message: Message, state: FSMContext):
         return
 
     if message.text == "Generate":
-        text_to_send = await get_format_data(message, state)
+        text_to_send, photos = await get_format_data(message, state)
 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
                     "role": "system",
-                    "content": 'Check location and points from 1 to 5,'
-                               ' then generate the answer from results of this point if they was.'
-                               'Try to answer just on question from points and remember about user location country'
+                    "content": 'You have a good understanding of countries and their stories, so you can help others by answering their '
+                               'questions.'
+                               ' Observe the following :'
+                               '1. Even if the punts go out of order, still answer in order and dont skip anything.'
+                               '2. Always give a full answer.'
+                               '3. If you dont have the answer to that point, write "I dont know the answer on this '
+                               'point" and go to the next point.'
+                               '4. Take information only from verified sources such as WIKI and others.'
+                               '5. At the end of your reply, add a sentence from yourself in which you simply thank the user for using '
+                               'your services to answer their questions.'
+                },
+                {"role": "user",
+                 "content":
+                     "Location: USA "
+                     "First_point_with_comment: Who is the first president of my country? "
+                     "Second point: njkasnvsvja131 "
+                     "Fourth point: All clear "
+                     "Fifth point: When my country became independent? "
+                     "Third point: All clear "
+                 },
+                {
+                    "role": "assistant", "content": "1. The first president of Israel was Chaim Weizmann."
+                                                    "2. I dont know the answer on this point"
+                                                    "3. Clear"
+                                                    "4. Clear"
+                                                    "5. Israel became independent in May 14, 1948"
                 },
                 {"role": "user", "content": text_to_send}
-            ]
+            ],
+            temperature=0.85
         )
 
         generated_text = response.choices[0].message.content
-        await message.answer(f"OpenAI Response: {generated_text}", reply_markup=ReplyKeyboardRemove())
+        await message.answer(f"OpenAI Response:\n{generated_text}", reply_markup=ReplyKeyboardRemove())
+
+        if photos:
+            for photo in photos:
+                if photo:
+                    await message.answer(f"Generate an image variation\nWait...")
+
+                    photo_response = client.images.create_variation(
+                        model='dall-e-2',
+                        image=photo,
+                        n=1,
+                        size='1024x1024'
+                    )
+                    await bot.send_photo(chat_id=message.chat.id, photo=f"{photo_response.data[0].url}")
 
         await message.answer(
-            "Now you can choose again one of 5 locations to create report by using OpenAI",
+            "Now you can choose again one of 5 locations to create another report by using OpenAI",
             reply_markup=ReplyKeyboardMarkup(
                 keyboard=[_locations],
                 resize_keyboard=True
