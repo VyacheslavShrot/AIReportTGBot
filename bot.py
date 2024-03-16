@@ -1,3 +1,5 @@
+import tempfile
+
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, FSInputFile
@@ -402,10 +404,11 @@ async def handle_report_from_openai(message: Message, state: FSMContext):
             voice='nova',
             input=generated_text
         )
-        with open("generated_audio.mp3", "wb") as audio_file:
-            audio_file.write(audio.content)
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio_file:
+            temp_audio_file.write(audio.content)
+            temp_audio_file_name = temp_audio_file.name
 
-        generated_audio = FSInputFile("generated_audio.mp3")
+        generated_audio = FSInputFile(temp_audio_file_name)
         await bot.send_audio(chat_id=message.chat.id, audio=generated_audio)
 
         if photos:
