@@ -1,6 +1,6 @@
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, FSInputFile
 
 from utils import dp, bot, expected_locations, get_points_option, handle_points, handle_points_with_comment, Form, handle_check_photo, \
     handle_photo, get_format_data, client
@@ -355,6 +355,7 @@ async def handle_report_from_openai(message: Message, state: FSMContext):
     if message.text == "Generate":
         text_to_send, photos = await get_format_data(message, state)
 
+        await message.answer(f"Generate an OpenAI response\nWait...")
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -394,6 +395,18 @@ async def handle_report_from_openai(message: Message, state: FSMContext):
 
         generated_text = response.choices[0].message.content
         await message.answer(f"OpenAI Response:\n{generated_text}", reply_markup=ReplyKeyboardRemove())
+
+        await message.answer(f"Generate an audio response\nWait...")
+        audio = client.audio.speech.create(
+            model='tts-1',
+            voice='nova',
+            input=generated_text
+        )
+        with open("generated_audio.mp3", "wb") as audio_file:
+            audio_file.write(audio.content)
+
+        generated_audio = FSInputFile("generated_audio.mp3")
+        await bot.send_audio(chat_id=message.chat.id, audio=generated_audio)
 
         if photos:
             for photo in photos:
