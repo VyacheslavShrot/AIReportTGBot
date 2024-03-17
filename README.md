@@ -1,14 +1,14 @@
-# <strong>AIReportTgBot</strong>
+# <strong>STRUCTURE</strong>
 
-- Not a complicated Telegram bot where every step is provided to collect data from the user and send it to OpenAI for analysis
-
-# Structure
-
-- A <strong>Telegram Bot</strong> that collects information from the user<br>
-- The code is written using the latest version of the <strong>aiogram</strong> library<br>
-- Sends it to the <strong>OpenAI</strong> model for analysis<br>
-- Then the user can get an answer
-
+- A <strong>Telegram Bot</strong> that collects information from the user
+- The code is written using the latest version of the <strong>aiogram</strong> library
+- Sends it to the <strong>gpt-3.5-turbo</strong>
+  model for analysis
+- Generating audio response with <strong>TTS</strong> model
+- Generating image variation with <strong>DALL-E-2</strong> model
 
 # <strong>LAUNCH</strong>
-- You need to set <strong>TOKEN</strong> to initialize the bot
+
+- In the .env file:
+    - <strong>TOKEN</strong> - for Telegram Bot
+    - <strong>OPENAI_API_KEY</strong>
