@@ -1,24 +1,25 @@
+import tempfile
+
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from openai import OpenAI
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, FSInputFile
 
 from utils import dp, bot, expected_locations, get_points_option, handle_points, handle_points_with_comment, Form, handle_check_photo, \
-    handle_photo, photos, get_format_data
+    handle_photo, get_format_data, client
+
+_locations = []
+for location in expected_locations:
+    keyboard_buttons = KeyboardButton(text=f"{location}")
+    _locations.append(keyboard_buttons)
 
 
 @dp.message(CommandStart())
 async def send_welcome(message: Message, state: FSMContext):
-    locations = []
-    for location in expected_locations:
-        keyboard_buttons = KeyboardButton(text=f"{location}")
-        locations.append(keyboard_buttons)
-
     await message.answer("Hello! Let's get started")
     await message.answer(
         "Now you can choose one of 5 locations to create report by using OpenAI",
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[locations],
+            keyboard=[_locations],
             resize_keyboard=True
         )
     )
@@ -332,18 +333,88 @@ async def handle_report_from_openai(message: Message, state: FSMContext):
         return
 
     if message.text == "Generate":
-        text_to_send = await get_format_data(message, state)
+        text_to_send, photos = await get_format_data(message, state)
 
-        client = OpenAI()
-        response = client.completions.create(
-            model="gpt-3.5-turbo-instruct",
-            prompt=text_to_send,
-            max_tokens=3
+        await message.answer(f"Generate an OpenAI response\nWait...")
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": 'You have a good understanding of countries and their stories, so you can help others by answering their '
+                               'questions.'
+                               ' Observe the following :'
+                               '1. Even if the punts go out of order, still answer in order and dont skip anything.'
+                               '2. Always give a full answer.'
+                               '3. If you dont have the answer to that point, write "I dont know the answer on this '
+                               'point" and go to the next point.'
+                               '4. Take information only from verified sources such as WIKI and others.'
+                               '5. At the end of your reply, add a sentence from yourself in which you simply thank the user for using '
+                               'your services to answer their questions.'
+                },
+                {"role": "user",
+                 "content":
+                     "Location: USA "
+                     "First_point_with_comment: Who is the first president of my country? "
+                     "Second point: njkasnvsvja131 "
+                     "Fourth point: All clear "
+                     "Fifth point: When my country became independent? "
+                     "Third point: All clear "
+                 },
+                {
+                    "role": "assistant", "content": "1. The first president of Israel was Chaim Weizmann."
+                                                    "2. I dont know the answer on this point"
+                                                    "3. Clear"
+                                                    "4. Clear"
+                                                    "5. Israel became independent in May 14, 1948"
+                },
+                {"role": "user", "content": text_to_send}
+            ],
+            temperature=0.85
         )
 
-        generated_text = response.choices[0].text
-        await message.answer(f"OpenAI Response: {generated_text}", reply_markup=ReplyKeyboardRemove())
+        generated_text = response.choices[0].message.content
+        await message.answer(f"OpenAI Response:\n{generated_text}", reply_markup=ReplyKeyboardRemove())
+
+        await message.answer(f"Generate an audio response\nWait...")
+        audio = client.audio.speech.create(
+            model='tts-1',
+            voice='nova',
+            input=generated_text
+        )
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio_file:
+            temp_audio_file.write(audio.content)
+            temp_audio_file_name = temp_audio_file.name
+
+        generated_audio = FSInputFile(temp_audio_file_name)
+        await bot.send_audio(chat_id=message.chat.id, audio=generated_audio)
+
+        if photos:
+            for photo in photos:
+                if photo:
+                    await message.answer(f"Generate an image variation\nWait...")
+
+                    photo_response = client.images.create_variation(
+                        model='dall-e-2',
+                        image=photo,
+                        n=1,
+                        size='1024x1024'
+                    )
+                    await bot.send_photo(chat_id=message.chat.id, photo=f"{photo_response.data[0].url}")
+
+        await message.answer(
+            "Now you can choose again one of 5 locations to create another report by using OpenAI",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=[_locations],
+                resize_keyboard=True
+            )
+        )
+
+        await state.clear()
+        await state.set_state(Form.location)
     elif message.text == "I want to re-fill":
+        await state.clear()
+
         await message.answer(
             f"Moving on to the point 1:",
             reply_markup=ReplyKeyboardMarkup(

@@ -1,7 +1,9 @@
+import io
 import logging
 import os
 
-# import openai
+import openai
+from PIL import Image
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -32,11 +34,11 @@ dp = Dispatcher(storage=_storage)
 """
                         FOR OPENAI
 """
-# _OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-# if _OPENAI_API_KEY is None:
-#     raise ValueError("OPENAI_API_KEY not found in the .env file. Make sure you add it")
-#
-# openai.api_key = _OPENAI_API_KEY
+_OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+if _OPENAI_API_KEY is None:
+    raise ValueError("OPENAI_API_KEY not found in the .env file. Make sure you add it")
+
+client = openai.OpenAI(api_key=_OPENAI_API_KEY)
 
 """
                         ELSE
@@ -87,6 +89,8 @@ class Form(StatesGroup):
     fifth_photo: str = State()
 
     report: str = State()
+
+    # generate_sound: str = State()
 
     OpenAI: str = State()
 
@@ -231,8 +235,27 @@ async def handle_photo(message, state, next_point_num, next_point, current_state
         await message.answer("Please send a photo.")
 
 
-async def get_format_data(message, state):
-    data = await state.get_data()
+async def get_format_data(message, state) -> (str, list):
+    data: dict = await state.get_data()
+
+    photos_from_points = []
+    for photo in photos:
+        photo_id = data.get(photo, None)
+
+        if not photo_id:
+            photos_from_points.append(None)
+        else:
+            file_info = await bot.get_file(photo_id)
+            photo_data = await bot.download_file(file_path=file_info.file_path)
+
+            image = Image.open(photo_data)
+            png_buffer = io.BytesIO()
+
+            image.save(png_buffer, format="PNG")
+            png_data = png_buffer.getvalue()
+
+            photos_from_points.append(png_data)
+
     text_to_send = " "
     current_state = await state.get_state()
     for key, value in data.items():
@@ -250,4 +273,4 @@ async def get_format_data(message, state):
                 await message.answer(f"{key}: {value}")
             text_to_send += f"{key}: {value}\n"
 
-    return text_to_send
+    return text_to_send, photos_from_points
